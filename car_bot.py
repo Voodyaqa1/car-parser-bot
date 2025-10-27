@@ -446,4 +446,32 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Для Render нужно слушать порт
+    import os
+
+    port = int(os.environ.get("PORT", 5000))
+
+    # Запускаем бота в отдельном потоке
+    import threading
+
+    bot_thread = threading.Thread(target=main)
+    bot_thread.daemon = True
+    bot_thread.start()
+
+    # Простой HTTP сервер для Render
+    from flask import Flask
+
+    app = Flask(__name__)
+
+
+    @app.route('/')
+    def home():
+        return "Car Parser Bot is running!"
+
+
+    @app.route('/health')
+    def health():
+        return "OK"
+
+
+    app.run(host='0.0.0.0', port=port)
