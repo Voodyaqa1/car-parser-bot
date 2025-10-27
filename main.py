@@ -11,19 +11,18 @@ import threading
 from datetime import datetime
 import re
 
-# Настройка логирования для Heroku
+# Настройка логирования для Render
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-
 class CarParserBot:
     def __init__(self):
-        # Получаем переменные окружения из Heroku
-        self.telegram_token = os.environ.get('8314379053:AAGGHI9mkp5Bwkui2W-X74oTxJSG_4iLirk')
-        self.chat_id = os.environ.get('330907288')
+        # Получаем переменные окружения
+        self.telegram_token = os.environ.get('TELEGRAM_BOT_TOKEN')  # Исправлено: используйте имя переменной окружения
+        self.chat_id = os.environ.get('TELEGRAM_CHAT_ID')  # Исправлено: используйте имя переменной окружения
 
         if not self.telegram_token or not self.chat_id:
             raise ValueError("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set")
@@ -122,7 +121,7 @@ class CarParserBot:
                 try:
                     response = requests.get(url, headers=self.headers, timeout=15)
                     response.raise_for_status()
-                    soup = BeautifulSoup(response.content, 'lxml')
+                    soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
 
                     listings = soup.find_all('a', {'data-ftid': 'bulls-list_bull'})
 
@@ -140,8 +139,7 @@ class CarParserBot:
                                 title = title_elem.text.strip()
                                 price = price_elem.text.strip()
                                 info = info_elem.text.strip() if info_elem else ""
-                                url_full = "https://www.drom.ru" + listing['href'] if listing['href'].startswith(
-                                    '/') else listing['href']
+                                url_full = "https://www.drom.ru" + listing['href'] if listing['href'].startswith('/') else listing['href']
 
                                 full_info = self.get_drom_details(url_full)
 
@@ -178,7 +176,7 @@ class CarParserBot:
         """Получение детальной информации с Drom"""
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
-            soup = BeautifulSoup(response.content, 'lxml')
+            soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
             info_sections = soup.find_all('div', class_=re.compile(r'info|description|params'))
             return ' '.join([section.get_text() for section in info_sections])
         except:
@@ -197,7 +195,7 @@ class CarParserBot:
                 try:
                     response = requests.get(url, headers=self.headers, timeout=15)
                     response.raise_for_status()
-                    soup = BeautifulSoup(response.content, 'lxml')
+                    soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
 
                     listings = soup.find_all('a', href=re.compile(r'\/auto\.ru\/cars\/used\/sale\/'))
 
@@ -255,7 +253,7 @@ class CarParserBot:
         """Получение детальной информации с Auto.ru"""
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
-            soup = BeautifulSoup(response.content, 'lxml')
+            soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
             description_elem = soup.find('div', class_=re.compile(r'Description'))
             if description_elem:
                 return description_elem.get_text()
@@ -276,7 +274,7 @@ class CarParserBot:
                 try:
                     response = requests.get(url, headers=self.headers, timeout=15)
                     response.raise_for_status()
-                    soup = BeautifulSoup(response.content, 'lxml')
+                    soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
 
                     listings = soup.find_all('div', {'data-marker': 'item'})
 
@@ -336,7 +334,7 @@ class CarParserBot:
         """Получение детальной информации с Avito"""
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
-            soup = BeautifulSoup(response.content, 'lxml')
+            soup = BeautifulSoup(response.content, 'html.parser')  # Изменено: используем html.parser
             desc_elem = soup.find('div', {'data-marker': 'item-view/item-description'})
             if desc_elem:
                 return desc_elem.get_text()
@@ -415,7 +413,7 @@ class CarParserBot:
 
     def run(self):
         """Основной цикл бота"""
-        logger.info("🤖 Бот запущен на Heroku")
+        logger.info("🤖 Бот запущен на Render")
         self.send_telegram_message("🤖 Бот запущен! Начинаю поиск автомобилей...")
 
         # Проверяем сразу при запуске
@@ -434,7 +432,6 @@ class CarParserBot:
                 logger.error(f"Ошибка в основном цикле: {e}")
                 time.sleep(60)
 
-
 def main():
     try:
         bot = CarParserBot()
@@ -444,16 +441,11 @@ def main():
         time.sleep(60)
         main()  # Перезапуск при ошибке
 
-
 if __name__ == "__main__":
     # Для Render нужно слушать порт
-    import os
-
     port = int(os.environ.get("PORT", 5000))
 
     # Запускаем бота в отдельном потоке
-    import threading
-
     bot_thread = threading.Thread(target=main)
     bot_thread.daemon = True
     bot_thread.start()
@@ -463,15 +455,12 @@ if __name__ == "__main__":
 
     app = Flask(__name__)
 
-
     @app.route('/')
     def home():
         return "Car Parser Bot is running!"
 
-
     @app.route('/health')
     def health():
         return "OK"
-
 
     app.run(host='0.0.0.0', port=port)
